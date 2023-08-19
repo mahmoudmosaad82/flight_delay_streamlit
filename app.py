@@ -136,7 +136,7 @@ if analysis_level == "General Flight Analysis":
     if sub_analysis == "Distribution of Total Flight Numbers":
         st.subheader("Distribution of Total Flight Numbers")
         # Grouping by "YEAR" and calculating the number of flights per year
-        flights_per_year = flights.groupby(by=[flights.YEAR])['FLIGHT_NUMBER'].agg(vaex.agg.count()).to_pandas_df().reset_index()
+        flights_per_year = flights.groupby(by=[flights.YEAR]).agg({'FLIGHT_NUMBER': vaex.agg.count()}).to_pandas_df().reset_index()
         # flights_per_year = flights.groupby("YEAR")["FLIGHT_NUMBER"].count().reset_index()
 
         # Creating the bar chart using Plotly Express
