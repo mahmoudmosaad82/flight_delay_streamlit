@@ -165,8 +165,8 @@ if analysis_level == "General Flight Analysis":
 
     elif sub_analysis == "Most Frequent Tail Numbers Used in 2015":
         st.subheader("Most Frequent Tail Numbers Used in 2015")
-
-        top_tail_numbers = flights['TAIL_NUMBER'].value_counts().sort_values(ascending=False).head(10)
+        top_tail_numbers=flights.groupby(flights.TAIL_NUMBER).agg({'TAIL_NUMBER': vaex.agg.count()}).sort('count', ascending=False).head(10).to_pandas_df()
+        # top_tail_numbers = flights['TAIL_NUMBER'].value_counts().sort_values(ascending=False).head(10)
         fig_most_frequent_tail = px.bar(x=top_tail_numbers.index, y=top_tail_numbers.values, title='Top 10 Most Frequent Tail Numbers',
                     labels={'x': 'Tail Number', 'y': 'Count'})
 
