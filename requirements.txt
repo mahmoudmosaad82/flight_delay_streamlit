@@ -4,4 +4,4 @@ pandas==2.0.2
 plotly==5.15.0
 streamlit==1.24.1
 vaex
-koalas pyspark==2.4.8
+koalas pyspark
