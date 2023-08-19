@@ -13,8 +13,7 @@ airport = pd.read_csv('airports.csv', low_memory=True)
 airlines = pd.read_csv('airlines.csv', low_memory=True)
 flights = vaex.open("flights.csv")
 flight=vaex.open("flight.csv")
-flight=flight.to_pandas_df()
-flights=flights.to_pandas_df()
+
 
 # Title and description
 # st.title("Flight Delay Prediction")
@@ -136,7 +135,8 @@ if analysis_level == "General Flight Analysis":
     if sub_analysis == "Distribution of Total Flight Numbers":
         st.subheader("Distribution of Total Flight Numbers")
         # Grouping by "YEAR" and calculating the number of flights per year
-        flights_per_year = flights.groupby("YEAR")["FLIGHT_NUMBER"].count().reset_index()
+        flights_per_year = flights.groupby(flights.YEAR)["FLIGHT_NUMBER"].count().to_pandas_df().reset_index()
+        # flights_per_year = flights.groupby("YEAR")["FLIGHT_NUMBER"].count().reset_index()
 
         # Creating the bar chart using Plotly Express
         fig_total_flights = px.bar(flights_per_year, x="YEAR", y="FLIGHT_NUMBER", labels={"FLIGHT_NUMBER": "Number of Flights"}, title="Number of Flights per Year")
