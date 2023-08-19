@@ -5,8 +5,8 @@ import matplotlib.pyplot as plt
 import plotly.express as px
 import plotly.graph_objects as go
 # import vaex
-
-import databricks.koalas as ks
+import dask.dataframe as dd
+# import databricks.koalas as ks
 
 # # Read a CSV file into a Koalas DataFrame
 # df = ks.read_csv('large_file.csv')
@@ -14,8 +14,8 @@ import databricks.koalas as ks
 # Load data
 airport = pd.read_csv('airports.csv', low_memory=True)
 airlines = pd.read_csv('airlines.csv', low_memory=True)
-flights = ks.read_csv("flights.csv")
-flight=ks.read_csv("flight.csv")
+flights = dd.read_csv("flights.csv")
+flight=dd.read_csv("flight.csv")
 # flight=flight.to_pandas_df()
 # flights=flights.to_pandas_df()
 
