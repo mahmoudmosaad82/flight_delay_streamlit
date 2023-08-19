@@ -14,8 +14,8 @@ import vaex
 # Load data
 airport = pd.read_csv('airports.csv', low_memory=True)
 airlines = pd.read_csv('airlines.csv', low_memory=True)
-flights = vaex.read_csv("flights.csv")
-flight=vaex.read_csv("flight.csv")
+flights = vaex.open("flights.csv")
+flight=vaex.open("flight.csv")
 # flight=flight.to_pandas_df()
 # flights=flights.to_pandas_df()
 
