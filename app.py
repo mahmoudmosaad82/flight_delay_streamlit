@@ -9,8 +9,8 @@ import plotly.graph_objects as go
 # Load data
 airport = pd.read_csv('airports.csv', low_memory=True)
 airlines = pd.read_csv('airlines.csv', low_memory=True)
-flights = pd.read_csv("flights.csv", low_memory=True)
-flight=pd.read_csv("flight.csv", low_memory=True)
+flights = pd.read_csv("flights.csv")
+flight=pd.read_csv("flight.csv")
 
 # Title and description
 # st.title("Flight Delay Prediction")
