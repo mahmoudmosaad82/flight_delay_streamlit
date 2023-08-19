@@ -13,8 +13,8 @@ airport = pd.read_csv('airports.csv', low_memory=True)
 airlines = pd.read_csv('airlines.csv', low_memory=True)
 flights = vaex.open("flights.csv")
 flight=vaex.open("flight.csv")
-flight=flight.to_pandas_df()
-flights=flights.to_pandas_df()
+# flight=flight.to_pandas_df()
+# flights=flights.to_pandas_df()
 
 # Title and description
 # st.title("Flight Delay Prediction")
