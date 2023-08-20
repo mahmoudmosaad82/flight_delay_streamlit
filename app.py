@@ -1,16 +1,17 @@
 import streamlit as st
 import pandas as pd
+import numpy as np
 import matplotlib.pyplot as plt
 import plotly.express as px
 import plotly.graph_objects as go
-import vaex
-# import databricks.koalas as ks
 
-# Load data as Koalas DataFrames
+
+# Load data
 airport = pd.read_csv('airports.csv', low_memory=True)
 airlines = pd.read_csv('airlines.csv', low_memory=True)
-flights = vaex.open("flights.csv")
-flight = vaex.open("flight.csv")
+flights = pd.read_csv("flights.csv", low_memory=True)
+flight=pd.read_csv("flight.csv", low_memory=True)
+
 # Title and description
 # st.title("Flight Delay Prediction")
 # st.write("Description: Files, Numerical & Categorical, Missing Values included. Can be used for EDA & Visualization or Prediction")
@@ -131,7 +132,7 @@ if analysis_level == "General Flight Analysis":
     if sub_analysis == "Distribution of Total Flight Numbers":
         st.subheader("Distribution of Total Flight Numbers")
         # Grouping by "YEAR" and calculating the number of flights per year
-        flights_per_year = flights.groupby(by="YEAR").agg({"FLIGHT_NUMBER": vaex.agg.count()}).to_pandas_df().reset_index()
+        flights_per_year = flights.groupby("YEAR")["FLIGHT_NUMBER"].count().reset_index()
 
         # Creating the bar chart using Plotly Express
         fig_total_flights = px.bar(flights_per_year, x="YEAR", y="FLIGHT_NUMBER", labels={"FLIGHT_NUMBER": "Number of Flights"}, title="Number of Flights per Year")
@@ -160,17 +161,10 @@ if analysis_level == "General Flight Analysis":
     elif sub_analysis == "Most Frequent Tail Numbers Used in 2015":
         st.subheader("Most Frequent Tail Numbers Used in 2015")
 
-        # Calculate the value counts for tail numbers and select the top 10
-        top_tail_numbers = flights['TAIL_NUMBER'].value_counts().head(10)
+        top_tail_numbers = flights['TAIL_NUMBER'].value_counts().sort_values(ascending=False).head(10)
+        fig_most_frequent_tail = px.bar(x=top_tail_numbers.index, y=top_tail_numbers.values, title='Top 10 Most Frequent Tail Numbers',
+                    labels={'x': 'Tail Number', 'y': 'Count'})
 
-        # Create a pandas DataFrame for plotting
-        top_tail_numbers_df = top_tail_numbers.to_pandas_df()
-
-        # Create the bar chart using Plotly Express
-        fig_most_frequent_tail = px.bar(x=top_tail_numbers_df.index, y=top_tail_numbers_df.values, title='Top 10 Most Frequent Tail Numbers',
-                            labels={'x': 'Tail Number', 'y': 'Count'})
-
-        # Show the plot
         st.plotly_chart(fig_most_frequent_tail)
         
         
@@ -246,25 +240,32 @@ elif analysis_level == "Airport-based Analysis":
     elif sub_analysis_airport == "Flight Numbers Based on Origin Airport and State":
         st.subheader("Flight Numbers Based on Origin Airport and State")
 
-        # Merge the DataFrames
-        merged_data = flight.join(airport, on=flight['ORIGIN_AIRPORT'] == airport['IATA_CODE'], how='left')
+        # Merge flight data with airport data to include state information
+        merged_data = pd.merge(flight, airport, left_on='ORIGIN_AIRPORT', right_on='IATA_CODE', how='left')
 
         # Calculate the total number of flights originating from each state
         state_counts = merged_data['STATE'].value_counts().reset_index()
         state_counts.columns = ['State', 'Number of Flights']
 
-        # Create the bar chart using Plotly Express
-        fig_state_counts = px.bar(state_counts, x='State', y='Number of Flights', title='Total Number of Flights Originating from Each State')
+        # Create a choropleth map using Plotly Express
+        fig_origin_flight_counts = px.choropleth(state_counts,
+                            locations='State',
+                            locationmode='USA-states',
+                            color='Number of Flights',
+                            color_continuous_scale='Viridis',  # You can choose a different color scale
+                            scope='usa',  # Set the scope to the United States
+                            title='Flights by Origin Airport and State',
+                            labels={'Number of Flights': 'Flight Count'})
 
-        # Show the plot
-        st.plotly_chart(fig_state_counts)
+        # Show the map
+        st.plotly_chart(fig_origin_flight_counts)
     elif sub_analysis_airport == "Flight Numbers Based on Destination Airports and State":
         st.subheader("Flight Numbers Based on Destination Airports and State")
         
- # Merge the DataFrames
-        merged_data = flight.join(airport, on=flight['DESTINATION_AIRPORT'] == airport['IATA_CODE'], how='left')
+        # Merge flight data with airport data to include state information
+        merged_data = pd.merge(flight, airport, left_on='DESTINATION_AIRPORT', right_on='IATA_CODE', how='left')
 
-        # Calculate the total number of flights arriving at each state
+        # Calculate the total number of flights originating from each state
         state_counts = merged_data['STATE'].value_counts().reset_index()
         state_counts.columns = ['State', 'Number of Flights']
 
@@ -283,30 +284,25 @@ elif analysis_level == "Airport-based Analysis":
     elif sub_analysis_airport == "Flight Numbers Based on Origin Airport":
         st.subheader("Flight Numbers Based on Origin Airport")
 
-       # Calculate the total number of flights originating from each airport
+       # Calculate the number of flights for each origin airport
         origin_counts = flight['ORIGIN_AIRPORT'].value_counts().reset_index()
         origin_counts.columns = ['IATA_CODE', 'Number of Flights']
 
         # Merge origin counts with airport data based on IATA code
-        merged_data = origin_counts.join(airport, on='IATA_CODE', how='inner')
+        merged_data = pd.merge(origin_counts, airport, on='IATA_CODE', how='inner')
 
         # Create a scatter plot map using Plotly Express
         fig_origin_state_flight_counts = px.scatter_geo(merged_data,
-                                lat='LATITUDE',
-                                lon='LONGITUDE',
-                                hover_name='AIRPORT',
-                                size='Number of Flights',
-                                title='Origin Airports and Flight Counts on Map',
-                                labels={'Number of Flights': 'Flight Count'},
-                                color='Number of Flights')
+                            lat='LATITUDE',
+                            lon='LONGITUDE',
+                            hover_name='AIRPORT',
+                            size='Number of Flights',
+                            title='Origin Airports and Flight Counts on Map',
+                            labels={'Number of Flights': 'Flight Count'},
+                            color='Number of Flights')
 
         # Show the map
         st.plotly_chart(fig_origin_state_flight_counts)
-
-
-
-
-
 
     # Sub-analysis for "Flight Numbers Based on Destination Airport"
     elif sub_analysis_airport == "Flight Numbers Based on Destination Airport":
@@ -315,72 +311,109 @@ elif analysis_level == "Airport-based Analysis":
 
         # Group flights by destination airport and state and calculate flight counts
         # Calculate the number of flights for each origin airport
-        # Calculate the total number of flights to each airport
-        destination_counts = flight['DESTINATION_AIRPORT'].value_counts().reset_index()
-        destination_counts.columns = ['IATA_CODE', 'Number of Flights']
+        origin_counts = flight['DESTINATION_AIRPORT'].value_counts().reset_index()
+        origin_counts.columns = ['IATA_CODE', 'Number of Flights']
 
-        # Merge destination counts with airport data based on IATA code
-        merged_data = destination_counts.join(airport, on='IATA_CODE', how='inner')
+        # Merge origin counts with airport data based on IATA code
+        merged_data = pd.merge(origin_counts, airport, on='IATA_CODE', how='inner')
 
         # Create a scatter plot map using Plotly Express
         fig_dest_state_flight_counts = px.scatter_geo(merged_data,
-                                lat='LATITUDE',
-                                lon='LONGITUDE',
-                                hover_name='AIRPORT',
-                                size='Number of Flights',
-                                title='Destination Airports and Flight Counts on Map',
-                                labels={'Number of Flights': 'Flight Count'},
-                                color='Number of Flights')
+                            lat='LATITUDE',
+                            lon='LONGITUDE',
+                            hover_name='AIRPORT',
+                            size='Number of Flights',
+                            title='Destination Airports and Flight Counts on Map',
+                            labels={'Number of Flights': 'Flight Count'},
+                            color='Number of Flights')
 
-        # Show the map
         st.plotly_chart(fig_dest_state_flight_counts)
     elif sub_analysis_airport == "Most Reliable Airports in 2015":
         st.subheader("Most Reliable Airports in 2015")
 
         # Third-level sidebar for filtering options
         reliability_filter = st.sidebar.radio("Select Reliability Filter",
-                                            ["Average Departure Delay",
-                                            "Average Arrival Delay",
-                                            "Average Total Delay"])
+                                             ["Average Departure Delay",
+                                              "Average Arrival Delay",
+                                              "Average Total Delay"])
 
         if reliability_filter == "Average Departure Delay":
             st.subheader("Most Reliable Airports in 2015 (Based on Average Departure Delay)")
+            # Calculate average departure delay for each origin airport
             avg_departure_delay_by_origin = flight.groupby('ORIGIN_AIRPORT')['DEPARTURE_DELAY'].mean().reset_index()
             avg_departure_delay_by_origin.columns = ['Airport', 'Avg_Departure_Delay']
+
+            # Sort the average departure delay data in ascending order
             sorted_data = avg_departure_delay_by_origin.sort_values(by='Avg_Departure_Delay', ascending=True)
+
+            # Select the top N most reliable airports to show on the graph
             top_airports = 10  # Change this number to select a different number of top airports
             top_airports_df = sorted_data.head(top_airports)
+
+            # Create a bar plot using Plotly
             fig_reliable_dep_delay = px.bar(top_airports_df, x='Avg_Departure_Delay', y='Airport',
                         title=f'Top {top_airports} Most Reliable Airports (Average Departure Delay)',
                         labels={'Avg_Departure_Delay': 'Average Departure Delay', 'Airport': 'Airport Name'})
+
+
+
             st.plotly_chart(fig_reliable_dep_delay)
 
         elif reliability_filter == "Average Arrival Delay":
             st.subheader("Most Reliable Airports in 2015 (Based on Average Arrival Delay)")
+            # Filter flights for the year 2015 and calculate average arrival delay for each airport
+            # Calculate average arrival delay for each destination airport
             avg_arrival_delay_by_destination = flight.groupby('DESTINATION_AIRPORT')['ARRIVAL_DELAY'].mean().reset_index()
             avg_arrival_delay_by_destination.columns = ['Airport', 'Avg_Arrival_Delay']
+
+
             sorted_data = avg_arrival_delay_by_destination.sort_values(by='Avg_Arrival_Delay', ascending=True)
+
+            # Select the top N most reliable destination airports to show on the graph
             top_airports = 10  # Change this number to select a different number of top airports
             top_airports_df = sorted_data.head(top_airports)
+
+            # Create a bar plot using Plotly
             fig_reliable_arr_delay = px.bar(top_airports_df, x='Avg_Arrival_Delay', y='Airport', orientation='h',
                         title=f'Top {top_airports} Most Reliable Destination Airports (Average Arrival Delay)',
                         labels={'Avg_Arrival_Delay': 'Average Arrival Delay', 'AIRPORT': 'Airport Name'})
+
+            # Show the plot
             st.plotly_chart(fig_reliable_arr_delay)
 
         elif reliability_filter == "Average Total Delay":
             st.subheader("Most Reliable Airports in 2015 (Based on Average Total Delay)")
+            # Filter flights for the year 2015 and calculate average total delay for each airport
+            # Calculate average departure delay for each origin airport
             avg_departure_delay_by_origin = flight.groupby('ORIGIN_AIRPORT')['DEPARTURE_DELAY'].mean().reset_index()
             avg_departure_delay_by_origin.columns = ['Airport', 'Avg_Departure_Delay']
+
+            # Calculate average arrival delay for each destination airport
             avg_arrival_delay_by_destination = flight.groupby('DESTINATION_AIRPORT')['ARRIVAL_DELAY'].mean().reset_index()
             avg_arrival_delay_by_destination.columns = ['Airport', 'Avg_Arrival_Delay']
+
+            # Merge the two datasets on the airport code
             reliability_data = pd.merge(avg_departure_delay_by_origin, avg_arrival_delay_by_destination, on='Airport')
+
+
+            # Calculate the overall reliability measure (you can adjust the formula based on your preference)
+            # For example, you can use the sum of inverse delays as a reliability measure
             reliability_data['Reliability'] = 1 / (reliability_data['Avg_Departure_Delay'] + reliability_data['Avg_Arrival_Delay'])
+
+            # Sort the data by reliability measure in descending order
             reliability_data = reliability_data.sort_values(by='Reliability', ascending=False)
+
+            # Select the top N most reliable airports to show on the graph
             top_airports = 7  # Change this number to select a different number of top airports
             top_airports_df = reliability_data.head(top_airports)
+
+            # Create a bar plot using Plotly
             fig_reliable_total_delay = px.bar(top_airports_df, x='Reliability', y='Airport', orientation='h',
                         title=f'Top {top_airports} Most Reliable Airports',
                         labels={'Reliability': 'Reliability Measure', 'AIRPORT': 'Airport Name'})
+
+
+            
             st.plotly_chart(fig_reliable_total_delay)
 
 
@@ -399,63 +432,73 @@ elif analysis_level == "Airline-based Analysis":
                                              "Monthly Flight Delay Analysis",
                                              "Weekly Flight Delay Analysis",
                                              "Daily Flight Delay Analysis",
-                                             "Statistical Summary of Airlines"])
+                                             "Statictical Summary of Airlines"])
 
     if sub_analysis_airline == "% of Flights by Airline":
         st.subheader("% of Flights by Airline")
 
         abbr_companies = airlines.set_index('IATA_CODE')['AIRLINE'].to_dict()
+
+        # Subset the DataFrame and redefine the airlines labeling
         df2 = flight.loc[:, ['AIRLINE', 'DEPARTURE_DELAY']]
         df2['AIRLINE'] = df2['AIRLINE'].replace(abbr_companies)
+
+        # Create a list of colors for Plotly using the built-in color palette
         colors = px.colors.qualitative.Prism
+        # Create a pie chart for the number of flights per company
         fig_flight_percent_by_airline = px.pie(df2, names='AIRLINE', color_discrete_sequence=colors,
                     title='% of flights per company', hole=0.3)
         fig_flight_percent_by_airline.update_traces(textposition='inside', textinfo='percent+label', customdata=df2['AIRLINE'])
+
+        # # Set the legend: abbreviation -> airline name
+        # legend_labels = [abbr_companies[abbr]+ f'({abbr})' for abbr in df2['AIRLINE'].unique()]
+        # fig1.update_traces(name=legend_labels)
+
         st.plotly_chart(fig_flight_percent_by_airline)
 
     elif sub_analysis_airline == "Number of Flights for Each Airline":
         st.subheader("Number of Flights for Each Airline")
 
+        ## Total Delayed Flights by Airline
         flight_count_per_airline = flight['AIRLINE'].value_counts()
+
         flight_count_df = flight_count_per_airline.reset_index()
         flight_count_df.columns = ['AIRLINE', 'FlightCount']
-        combined_df = pd.merge(flight_count_df, airlines, left_on='AIRLINE', right_on='IATA_CODE')
-        fig_flight_counts_by_airline = px.bar(combined_df, x='AIRLINE_y', y='FlightCount', title='Number of Flights by Airline')
-        st.plotly_chart(fig_flight_counts_by_airline)
 
+        # Merge flight_count_df with airlines_df to get airline names
+        combined_df = pd.merge(flight_count_df, airlines, left_on='AIRLINE', right_on='IATA_CODE')
+
+        # Create a bar plot
+        fig_flight_counts_by_airline = px.bar(combined_df, x='AIRLINE_y', y='FlightCount', title='Number of Flights by Airline')
+
+
+        st.plotly_chart(fig_flight_counts_by_airline)
 
     elif sub_analysis_airline == "Mean Departure Delay by Airline":
         st.subheader("Mean Departure Delay by Airline")
 
-        # Calculate the mean departure delay for each airline using Vaex
-        mean_delay_Dep = flight.groupby(by='AIRLINE', agg=vaex.agg.mean('DEPARTURE_DELAY'))
+        # calculate the average delay for each airline 
+        # CALCULATE THE MEAN TIME DELAY FOR DEPARTURE AND ARRIVAL FOR EACH AIRLINE
+        mean_delay_Dep = flight.groupby('AIRLINE')['DEPARTURE_DELAY'].mean()
+        mean_delay_Arr= flight.groupby('AIRLINE')['ARRIVAL_DELAY'].mean()
 
-        mean_delay_Dep.sort('DEPARTURE_DELAY', ascending=False, inplace=True)
-
-        fig_mean_dep_delay_by_airline = px.bar(mean_delay_Dep.to_pandas_df(), x="DEPARTURE_DELAY", y="AIRLINE",
-                                                title='Mean Departure Delay by Airline')
+        mean_delay_Dep.sort_values(ascending=False)
+        fig_mean_dep_delay_by_airline=px.bar(mean_delay_Dep, x="DEPARTURE_DELAY", y=mean_delay_Dep.index, title='Mean Departure Delay by Airline')
 
         st.plotly_chart(fig_mean_dep_delay_by_airline)
 
     elif sub_analysis_airline == "Mean Arrival Delay by Airline":
         st.subheader("Mean Arrival Delay by Airline")
-
-        # Calculate the mean arrival delay for each airline using Vaex
-        mean_delay_Arr = flight.groupby(by='AIRLINE', agg=vaex.agg.mean('ARRIVAL_DELAY'))
-
-        mean_delay_Arr.sort('ARRIVAL_DELAY', ascending=False, inplace=True)
-
-        fig_mean_arr_delay_by_airline = px.bar(mean_delay_Arr.to_pandas_df(), x="ARRIVAL_DELAY", y="AIRLINE",
-                                                title='Mean Arrival Delay by Airline')
+        mean_delay_Arr= flight.groupby('AIRLINE')['ARRIVAL_DELAY'].mean()
+        mean_delay_Arr=mean_delay_Arr.sort_values( ascending=False)
+        fig_mean_arr_delay_by_airline=px.bar(mean_delay_Arr, x="ARRIVAL_DELAY", y=mean_delay_Arr.index, title='Mean Arrival Delay by Airline')
 
         st.plotly_chart(fig_mean_arr_delay_by_airline)
 
-
-    elif sub_analysis_airline == "Average Delay by Airline":    
+    elif sub_analysis_airline == "Average Delay by Airline":
         st.header("Average Delay by Airline")
-        
         # Your avg_delay data
-        avg_delay = vaex.from_dict({
+        avg_delay = pd.Series({
             'AA': 12.352228,
             'AS': 0.809238,
             'B6': 18.192213,
@@ -490,18 +533,17 @@ elif analysis_level == "Airline-based Analysis":
             'VX': 'Virgin America'
         }
 
-        # Create a Vaex DataFrame with airline names
-        avg_delay_df = vaex.DataFrame({'Airline': avg_delay.keys(), 'AvgDelay': avg_delay.values()})
+        # Create a DataFrame with airline names
+        avg_delay_df = pd.DataFrame({'Airline': avg_delay.index, 'AvgDelay': avg_delay.values})
         avg_delay_df['AirlineName'] = avg_delay_df['Airline'].map(airline_mapping)
 
         # Create a bar plot using Plotly Express
-        fig = px.bar(avg_delay_df.to_pandas_df(), x='AvgDelay', y='AirlineName', orientation='h',
+        fig = px.bar(avg_delay_df, x='AvgDelay', y='AirlineName', orientation='h',
                     title='Average Delay by Airline',
                     labels={'AvgDelay': 'Average Delay (min)', 'AirlineName': 'Airline'})
 
         # Show the plot
         st.plotly_chart(fig)
-
     elif sub_analysis_airline == "Mean Arrival & Departure Delay by Airline":
         st.header("Mean Arrival & Departure Delay by Airline")
         
@@ -550,69 +592,66 @@ elif analysis_level == "Airline-based Analysis":
         
     elif sub_analysis_airline == "Monthly Flight Delay Analysis":
         st.header("Monthly Flight Delay Analysis")
+        # Convert date columns to datetime format
+        flight['SCHEDULED_DEPARTURE'] = pd.to_datetime(flight['SCHEDULED_DEPARTURE'])
 
-        # Convert date columns to datetime format using Vaex
-        flight['SCHEDULED_DEPARTURE'] = vaex.to_datetime(flight['SCHEDULED_DEPARTURE'])
-
-        # Extract year and month using Vaex
+        # Extract year and month
         flight['Year'] = flight['SCHEDULED_DEPARTURE'].dt.year
         flight['Month'] = flight['SCHEDULED_DEPARTURE'].dt.month
 
-        # Calculate mean delay for each airline for each month using Vaex
-        mean_monthly_delay = flight.groupby(['Year', 'Month', 'AIRLINE'], agg={'ARRIVAL_DELAY': 'mean', 'DEPARTURE_DELAY': 'mean'})
+        # Calculate mean delay for each airline for each month
+        mean_monthly_delay = flight.groupby(['Year', 'Month', 'AIRLINE'])[['ARRIVAL_DELAY', 'DEPARTURE_DELAY']].mean().reset_index()
 
         # Merge with airlines_df to get full airline names
-        combined_df = mean_monthly_delay.join(airlines, on='AIRLINE', how='left')
+        combined_df = pd.merge(mean_monthly_delay, airlines, left_on='AIRLINE', right_on='IATA_CODE')
 
-        # Create a line plot to visualize monthly flight delays using Vaex
-        fig = px.line(combined_df.to_pandas_df(), x='Month', y=['ARRIVAL_DELAY', 'DEPARTURE_DELAY'],
+        # Create a line plot to visualize monthly flight delays
+        fig = px.line(combined_df, x='Month', y=['ARRIVAL_DELAY', 'DEPARTURE_DELAY'],
                     color='AIRLINE_x',  # Use 'AIRLINE_x' column as color grouping
                     labels={'Month': 'Month', 'value': 'Mean Delay'},
                     title='Monthly Flight Delays by Airline',
                     line_group='AIRLINE_y')  # Use 'AIRLINE_x' column as line grouping
         fig.update_xaxes(type='category')
-
-        # Calculate mean delay for each airline for each month using Vaex
-        mean_monthly_delay = flight.groupby(['Year', 'Month', 'AIRLINE'], agg={'ARRIVAL_DELAY': 'mean', 'DEPARTURE_DELAY': 'mean'})
-
+        # Calculate mean delay for each airline for each month
+        mean_monthly_delay = flight.groupby(['Year', 'Month', 'AIRLINE'])[['ARRIVAL_DELAY', 'DEPARTURE_DELAY']].mean().reset_index()
+        combined_df = pd.merge(mean_monthly_delay, airlines, left_on='AIRLINE', right_on='IATA_CODE')
         # Create a scatter plot with trend lines using Plotly
-        fig1 = px.scatter(mean_monthly_delay.to_pandas_df(), x='Month', y='ARRIVAL_DELAY',
-                        title='Monthly Mean Flight Time Delay Trend (All Airlines)',
-                        labels={'Month': 'Month', 'ARRIVAL_DELAY': 'Mean Arrival Delay'},
-                        hover_name="AIRLINE_y"
+        fig1 = px.scatter(combined_df, x='Month', y='ARRIVAL_DELAY', title='Monthly Mean Flight Time Delay Trend (All Airlines)',
+                        labels={'Month': 'Month', 'ARRIVAL_DELAY': 'Mean Arrival Delay'},hover_name="AIRLINE_y"
                         )
-        fig1.update_xaxes(tickvals=list(range(1, 13)),
-                        ticktext=['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'])
 
-        # Calculate mean delay for each airline for each month using Vaex
-        mean_monthly_delay = flight.groupby(['Year', 'Month'], agg={'ARRIVAL_DELAY': 'mean', 'DEPARTURE_DELAY': 'mean'})
+        # Set x-axis tick labels
+        fig1.update_xaxes(tickvals=list(range(1, 13)), ticktext=['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'])
+        # Calculate mean delay for each airline for each month
+        mean_monthly_delay = flight.groupby(['Year', 'Month'])[['ARRIVAL_DELAY', 'DEPARTURE_DELAY']].mean().reset_index()
 
         # Create a line plot with trend lines using Plotly
-        fig2 = px.line(mean_monthly_delay.to_pandas_df(), x='Month', y='ARRIVAL_DELAY',
-                    title='Monthly Mean Flight Arrival Delay Trend (All Airlines)',
+        fig2 = px.line(mean_monthly_delay, x='Month', y='ARRIVAL_DELAY', title='Monthly Mean Flight Arrival Delay Trend (All Airlines)',
                     labels={'Month': 'Month', 'ARRIVAL_DELAY': 'Mean Arrival Delay'})
-        fig2.update_xaxes(tickvals=list(range(1, 13)),
-                        ticktext=['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'])
 
-        # Calculate mean delay for each airline for each month using Vaex
-        mean_monthly_delay = flight.groupby(['Year', 'Month'], agg={'ARRIVAL_DELAY': 'mean', 'DEPARTURE_DELAY': 'mean'})
+        # Set x-axis tick labels
+        fig2.update_xaxes(tickvals=list(range(1, 13)), ticktext=['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'])
+
+        
+
+        # Calculate mean delay for each airline for each month
+        mean_monthly_delay = flight.groupby(['Year', 'Month'])[['ARRIVAL_DELAY', 'DEPARTURE_DELAY']].mean().reset_index()
 
         # Create a line plot using Plotly
-        fig3 = px.line(mean_monthly_delay.to_pandas_df(), x='Month', y='DEPARTURE_DELAY',
-                    title='Monthly Mean Flight Departure Delay Trend (All Airlines)',
+        fig3 = px.line(mean_monthly_delay, x='Month', y='DEPARTURE_DELAY', title='Monthly Mean Flight Departure Delay Trend (All Airlines)',
                     labels={'Month': 'Month', 'DEPARTURE_DELAY': 'Mean Departure Delay'})
-        fig3.update_xaxes(tickvals=list(range(1, 13)),
-                        ticktext=['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'])
 
-        # Show the plots
+        # Set x-axis tick labels
+        fig3.update_xaxes(tickvals=list(range(1, 13)), ticktext=['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'])
+
+        # Show the plot
         st.plotly_chart(fig)
         st.plotly_chart(fig1)
         st.plotly_chart(fig2)
         st.plotly_chart(fig3)
-
     elif sub_analysis_airline == "Weekly Flight Delay Analysis":
         st.header("Weekly Flight Delay Analysis")
-        # Convert date columns to datetime format
+         # Convert date columns to datetime format
         flight['SCHEDULED_DEPARTURE'] = pd.to_datetime(flight['SCHEDULED_DEPARTURE'])
         # Extract year and week
         flight['Year'] = flight['SCHEDULED_DEPARTURE'].dt.year
@@ -690,74 +729,76 @@ elif analysis_level == "Airline-based Analysis":
         st.plotly_chart(fig4)
     elif sub_analysis_airline == "Daily Flight Delay Analysis":
         st.header("Daily Flight Delay Analysis")
-
-        # Convert date columns to datetime format using Vaex
-        flight['SCHEDULED_DEPARTURE'] = vaex.to_datetime(flight['SCHEDULED_DEPARTURE'], format='%Y-%m-%d %H:%M:%S')
+        flight['SCHEDULED_DEPARTURE'] = pd.to_datetime(flight['SCHEDULED_DEPARTURE'], format='%Y-%m-%d %H:%M:%S')
 
         # Extract the day of the week and create a new column 'DAY_OF_WEEK'
         flight['DAY_OF_WEEK'] = flight['SCHEDULED_DEPARTURE'].dt.day_name()
 
-        # Group flights by day of the week and calculate the average departure delay using Vaex
-        daily_delay_by_day = flight.groupby('DAY_OF_WEEK', agg={'DEPARTURE_DELAY': 'mean'})
+
+        # Group flights by day of the week and calculate the average departure delay
+        daily_delay_by_day = flight.groupby('DAY_OF_WEEK')['DEPARTURE_DELAY'].mean().reset_index()
 
         # Specify the desired order of days
         desired_day_order = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
 
-        # Create a bar plot using Plotly Express and Vaex
-        bar_fig = px.bar(daily_delay_by_day.to_pandas_df(), x='DAY_OF_WEEK', y='DEPARTURE_DELAY',
-                        title='Average Departure Delay by Day of the Week',
+        # Create a bar plot
+        bar_fig = px.bar(daily_delay_by_day, x='DAY_OF_WEEK', y='DEPARTURE_DELAY', title='Average Departure Delay by Day of the Week',
                         labels={'DAY_OF_WEEK': 'Day of the Week', 'DEPARTURE_DELAY': 'Average Departure Delay'},
                         category_orders={'DAY_OF_WEEK': desired_day_order})  # Set the desired order
-        st.plotly_chart(bar_fig)
 
-        # Group flights by day of the week and calculate the average arrival delay using Vaex
-        daily_delay_by_day_ARR = flight.groupby('DAY_OF_WEEK', agg={'ARRIVAL_DELAY': 'mean'})
+       
+        # Group flights by day of the week and calculate the average departure delay
+        daily_delay_by_day_ARR = flight.groupby('DAY_OF_WEEK')['ARRIVAL_DELAY'].mean().reset_index()
 
-        # Create a bar plot using Plotly Express and Vaex
-        bar_fig1 = px.bar(daily_delay_by_day_ARR.to_pandas_df(), x='DAY_OF_WEEK', y='ARRIVAL_DELAY',
-                        title='Average ARRIVAL Delay by Day of the Week',
+        # Specify the desired order of days
+        desired_day_order = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+
+        # Create a bar plot
+        bar_fig1 = px.bar(daily_delay_by_day_ARR, x='DAY_OF_WEEK', y='ARRIVAL_DELAY', title='Average ARRIVAL Delay by Day of the Week',
                         labels={'DAY_OF_WEEK': 'Day of the Week', 'ARRIVAL_DELAY': 'Average ARRIVAL Delay'},
                         category_orders={'DAY_OF_WEEK': desired_day_order})  # Set the desired order
-        st.plotly_chart(bar_fig1)
 
-        # Group flights by day of the week and calculate the average departure and arrival delays using Vaex
-        daily_delay_by_day = flight.groupby('DAY_OF_WEEK', agg={'DEPARTURE_DELAY': 'mean', 'ARRIVAL_DELAY': 'mean'})
 
-        # Create a bar plot using Plotly Express and Vaex
-        bar_fig2 = px.bar(daily_delay_by_day.to_pandas_df(), x='DAY_OF_WEEK', y=['DEPARTURE_DELAY', 'ARRIVAL_DELAY'],
+
+        # Group flights by day of the week and calculate the average departure and arrival delays
+        daily_delay_by_day = flight.groupby('DAY_OF_WEEK')[['DEPARTURE_DELAY', 'ARRIVAL_DELAY']].mean().reset_index()
+
+        # Specify the desired order of days
+        desired_day_order = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+
+        # Create a bar plot
+        bar_fig2 = px.bar(daily_delay_by_day, x='DAY_OF_WEEK', y=['DEPARTURE_DELAY', 'ARRIVAL_DELAY'],
                         title='Average Departure and Arrival Delays by Day of the Week',
                         labels={'DAY_OF_WEEK': 'Day of the Week', 'value': 'Average Delay'},
                         category_orders={'DAY_OF_WEEK': desired_day_order},  # Set the desired order
                         color_discrete_map={'DEPARTURE_DELAY': 'blue', 'ARRIVAL_DELAY': 'orange'},  # Assign colors to delays
                         barmode='group')  # Grouped bar plot
+        st.plotly_chart(bar_fig)
+        st.plotly_chart(bar_fig1)
         st.plotly_chart(bar_fig2)
 
-    elif sub_analysis_airline == "Statistical Summary of Airlines":
-        st.header("Statistical Summary of Airlines")
-
-        # Function that extracts statistical parameters from a groupby object using Vaex
+        
+        
+    elif sub_analysis_airline == "Statictical Summary of Airlines":
+        st.header("Statictical Summary of Airlines")
+        # function that extract statistical parameters from a grouby objet:
         def get_stats(group):
             return {'min': group.min(), 'max': group.max(),
                     'count': group.count(), 'mean': group.mean()}
+        global_stats = flight['DEPARTURE_DELAY'].groupby(flight['AIRLINE']).apply(get_stats).unstack()
+        global_stats = global_stats.sort_values('count')
+        st.write(global_stats)
+        fig_stats = px.bar(global_stats,
+                   x=global_stats.index,
+                   y=['min', 'max', 'count', 'mean'],
+                   title='Statistical Summary of Airlines',
+                   labels={'x': 'Airline', 'value': 'Value', 'variable': 'Statistic'},
+                   barmode='group')
+
+        # Show the plot
+        st.plotly_chart(fig_stats)
+
         
-        # Calculate global statistics for departure delay using Vaex
-        global_stats_dep = flight.groupby(flight['AIRLINE']).agg({'DEPARTURE_DELAY': get_stats})
-        global_stats_dep = global_stats_dep.sort('count')
-
-        # Convert Vaex DataFrame to Pandas DataFrame for visualization using Plotly Express
-        global_stats_dep_pd = global_stats_dep.to_pandas_df()
-
-        # Create a bar plot using Plotly Express
-        fig_stats_dep = px.bar(global_stats_dep_pd, x=global_stats_dep_pd.index,
-                                y=['min', 'max', 'count', 'mean'],
-                                title='Statistical Summary of Airlines (Departure Delay)',
-                                labels={'x': 'Airline', 'value': 'Value', 'variable': 'Statistic'},
-                                barmode='group')
-        
-        # Show the departure delay statistics plot
-        st.plotly_chart(fig_stats_dep)
-
-            
 
 
 elif analysis_level == "Time-based Analysis":
