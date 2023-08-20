@@ -502,51 +502,51 @@ elif analysis_level == "Airline-based Analysis":
         # Show the plot
         st.plotly_chart(fig)
 
-        elif sub_analysis_airline == "Mean Arrival & Departure Delay by Airline":
-            st.header("Mean Arrival & Departure Delay by Airline")
-            
-            # Calculate the mean delay for each airline
-            mean_delay = flight.groupby('AIRLINE')[['ARRIVAL_DELAY', 'DEPARTURE_DELAY']].mean().reset_index()
+    elif sub_analysis_airline == "Mean Arrival & Departure Delay by Airline":
+        st.header("Mean Arrival & Departure Delay by Airline")
+        
+        # Calculate the mean delay for each airline
+        mean_delay = flight.groupby('AIRLINE')[['ARRIVAL_DELAY', 'DEPARTURE_DELAY']].mean().reset_index()
 
-            # Merge with airlines_df to get full airline names
-            combined_df = pd.merge(mean_delay, airlines, left_on='AIRLINE', right_on='IATA_CODE')
+        # Merge with airlines_df to get full airline names
+        combined_df = pd.merge(mean_delay, airlines, left_on='AIRLINE', right_on='IATA_CODE')
 
-            # Create a bar plot
-            fig = px.bar(combined_df, x='AIRLINE_y', y=['ARRIVAL_DELAY', 'DEPARTURE_DELAY'],
-                        title='Mean Arrival and Departure Delays by Airline',
-                        labels={'ARRIVAL_DELAY': 'Mean Arrival Delay', 'DEPARTURE_DELAY': 'Mean Departure Delay'},
-                        barmode='group')
-            st.plotly_chart(fig)
-        elif sub_analysis_airline == "Most Reliable Airline":
-            st.subheader("Most Reliable Airline")
+        # Create a bar plot
+        fig = px.bar(combined_df, x='AIRLINE_y', y=['ARRIVAL_DELAY', 'DEPARTURE_DELAY'],
+                    title='Mean Arrival and Departure Delays by Airline',
+                    labels={'ARRIVAL_DELAY': 'Mean Arrival Delay', 'DEPARTURE_DELAY': 'Mean Departure Delay'},
+                    barmode='group')
+        st.plotly_chart(fig)
+    elif sub_analysis_airline == "Most Reliable Airline":
+        st.subheader("Most Reliable Airline")
 
-            # Calculate average arrival and departure delay for each airline
-            airline_stats = flights.groupby('AIRLINE').agg({
-                'ARRIVAL_DELAY': 'mean',
-                'DEPARTURE_DELAY': 'mean'
-            }).reset_index()
+        # Calculate average arrival and departure delay for each airline
+        airline_stats = flights.groupby('AIRLINE').agg({
+            'ARRIVAL_DELAY': 'mean',
+            'DEPARTURE_DELAY': 'mean'
+        }).reset_index()
 
-            # Merge with airlines_df to get full airline names
-            airline_stats = pd.merge(airline_stats, airlines, left_on='AIRLINE', right_on='IATA_CODE')
+        # Merge with airlines_df to get full airline names
+        airline_stats = pd.merge(airline_stats, airlines, left_on='AIRLINE', right_on='IATA_CODE')
 
-            # Sort by average arrival delay for better visualization
-            airline_stats = airline_stats.sort_values(by='ARRIVAL_DELAY')
+        # Sort by average arrival delay for better visualization
+        airline_stats = airline_stats.sort_values(by='ARRIVAL_DELAY')
 
-            # Create a grouped bar chart
-            fig = go.Figure(data=[
-                go.Bar(name='Average Arrival Delay', x=airline_stats['AIRLINE_y'], y=airline_stats['ARRIVAL_DELAY']),
-                go.Bar(name='Average Departure Delay', x=airline_stats['AIRLINE_y'], y=airline_stats['DEPARTURE_DELAY'])
-            ])
+        # Create a grouped bar chart
+        fig = go.Figure(data=[
+            go.Bar(name='Average Arrival Delay', x=airline_stats['AIRLINE_y'], y=airline_stats['ARRIVAL_DELAY']),
+            go.Bar(name='Average Departure Delay', x=airline_stats['AIRLINE_y'], y=airline_stats['DEPARTURE_DELAY'])
+        ])
 
-            # Update layout
-            fig.update_layout(barmode='group',
-                            title='Average Arrival and Departure Delay by Airline',
-                            xaxis_title='Airline',
-                            yaxis_title='Delay',
-                            legend_title='Delay Type')
+        # Update layout
+        fig.update_layout(barmode='group',
+                        title='Average Arrival and Departure Delay by Airline',
+                        xaxis_title='Airline',
+                        yaxis_title='Delay',
+                        legend_title='Delay Type')
 
-            # Show the plot
-            st.plotly_chart(fig)
+        # Show the plot
+        st.plotly_chart(fig)
         
     elif sub_analysis_airline == "Monthly Flight Delay Analysis":
         st.header("Monthly Flight Delay Analysis")
@@ -610,84 +610,84 @@ elif analysis_level == "Airline-based Analysis":
         st.plotly_chart(fig2)
         st.plotly_chart(fig3)
 
-        elif sub_analysis_airline == "Weekly Flight Delay Analysis":
-            st.header("Weekly Flight Delay Analysis")
-            # Convert date columns to datetime format
-            flight['SCHEDULED_DEPARTURE'] = pd.to_datetime(flight['SCHEDULED_DEPARTURE'])
-            # Extract year and week
-            flight['Year'] = flight['SCHEDULED_DEPARTURE'].dt.year
-            flight['Week'] = (flight['SCHEDULED_DEPARTURE'].dt.strftime('%U'))
-            mean_weekly_delay = flight.groupby(['Year', 'Week', 'AIRLINE'])[['ARRIVAL_DELAY','DEPARTURE_DELAY']].mean().reset_index()
+    elif sub_analysis_airline == "Weekly Flight Delay Analysis":
+        st.header("Weekly Flight Delay Analysis")
+        # Convert date columns to datetime format
+        flight['SCHEDULED_DEPARTURE'] = pd.to_datetime(flight['SCHEDULED_DEPARTURE'])
+        # Extract year and week
+        flight['Year'] = flight['SCHEDULED_DEPARTURE'].dt.year
+        flight['Week'] = (flight['SCHEDULED_DEPARTURE'].dt.strftime('%U'))
+        mean_weekly_delay = flight.groupby(['Year', 'Week', 'AIRLINE'])[['ARRIVAL_DELAY','DEPARTURE_DELAY']].mean().reset_index()
 
-            # Merge with airlines_df to get full airline names
-            combined_df = pd.merge(mean_weekly_delay, airlines, left_on='AIRLINE', right_on='IATA_CODE')
-            # Create scatter plot with trendline using Plotly Express
-            fig = px.scatter(combined_df,
-                            x='Week',
-                            y='ARRIVAL_DELAY',
-                            title='Weekly Flight Arrival Delays with Trend Line',
-                            hover_name='AIRLINE_y',
-                            labels={'Week': 'Week', 'ARRIVAL_DELAY': 'Mean Arrival Delay'},
-                            )  
-
-            # Show the plot
-
-            # Merge with airlines_df to get full airline names
-            combined_df = pd.merge(mean_weekly_delay, airlines, left_on='AIRLINE', right_on='IATA_CODE')
-            # Create scatter plot with trendline using Plotly Express
-            fig1 = px.scatter(combined_df,
-                            x='Week',
-                            y='DEPARTURE_DELAY',
-                            title='Weekly Flight Departure Delays with Trend Line',
-                            hover_name='AIRLINE_y',
-                            labels={'Week': 'Week', 'DEPARTURE_DELAY': 'Mean DEPARTURE DELAY '},
-            )
-
-            # Show the plot
-            # Calculate mean arrival delay for each week
-            mean_weekly_delay = flight.groupby(['Year', 'Week'])[['ARRIVAL_DELAY',"DEPARTURE_DELAY"]].mean().reset_index()
-
-            # Create scatter plot with trendline using Plotly Express
-            fig2 = px.line(mean_weekly_delay,
-                            x='Week',
-                            y='ARRIVAL_DELAY',
-                            title='Weekly Mean Flight Arrival Delay with Trend Line',
-                            labels={'Week': 'Week', 'ARRIVAL_DELAY': 'Mean Arrival Delay'},
-                            )
-
-            # Show the plot
-            # Calculate mean arrival delay for each week
-            mean_weekly_delay = flight.groupby(['Year', 'Week'])[['ARRIVAL_DELAY',"DEPARTURE_DELAY"]].mean().reset_index()
-
-            # Create scatter plot with trendline using Plotly Express
-            fig3 = px.line(mean_weekly_delay,
-                            x='Week',
-                            y='DEPARTURE_DELAY',
-                            title='Weekly Mean Flight Departure Delay with Trend Line',
-                            labels={'Week': 'Week', 'DEPARTURE_DELAY': 'Mean Departure Delay'},
-                            )
-
-            # Show the plot
-            # Calculate mean arrival and departure delay for each week
-            mean_weekly_delay = flight.groupby(['Year', 'Week'])[['ARRIVAL_DELAY', 'DEPARTURE_DELAY']].mean().reset_index()
-
-            # Calculate combined delay (arrival delay + departure delay)
-            mean_weekly_delay['COMBINED_DELAY'] = mean_weekly_delay['ARRIVAL_DELAY'] + mean_weekly_delay['DEPARTURE_DELAY']
-
-            # Create line plot using Plotly Express
-            fig4 = px.line(mean_weekly_delay,
+        # Merge with airlines_df to get full airline names
+        combined_df = pd.merge(mean_weekly_delay, airlines, left_on='AIRLINE', right_on='IATA_CODE')
+        # Create scatter plot with trendline using Plotly Express
+        fig = px.scatter(combined_df,
                         x='Week',
-                        y=['ARRIVAL_DELAY', 'DEPARTURE_DELAY'],
-                        title='Weekly Mean Flight Combined Delay (Departure Delay + Arrival Delay) with Trend Line',
-                        labels={'Week': 'Week', 'COMBINED_DELAY': 'Mean Combined Delay'},
+                        y='ARRIVAL_DELAY',
+                        title='Weekly Flight Arrival Delays with Trend Line',
+                        hover_name='AIRLINE_y',
+                        labels={'Week': 'Week', 'ARRIVAL_DELAY': 'Mean Arrival Delay'},
+                        )  
+
+        # Show the plot
+
+        # Merge with airlines_df to get full airline names
+        combined_df = pd.merge(mean_weekly_delay, airlines, left_on='AIRLINE', right_on='IATA_CODE')
+        # Create scatter plot with trendline using Plotly Express
+        fig1 = px.scatter(combined_df,
+                        x='Week',
+                        y='DEPARTURE_DELAY',
+                        title='Weekly Flight Departure Delays with Trend Line',
+                        hover_name='AIRLINE_y',
+                        labels={'Week': 'Week', 'DEPARTURE_DELAY': 'Mean DEPARTURE DELAY '},
+        )
+
+        # Show the plot
+        # Calculate mean arrival delay for each week
+        mean_weekly_delay = flight.groupby(['Year', 'Week'])[['ARRIVAL_DELAY',"DEPARTURE_DELAY"]].mean().reset_index()
+
+        # Create scatter plot with trendline using Plotly Express
+        fig2 = px.line(mean_weekly_delay,
+                        x='Week',
+                        y='ARRIVAL_DELAY',
+                        title='Weekly Mean Flight Arrival Delay with Trend Line',
+                        labels={'Week': 'Week', 'ARRIVAL_DELAY': 'Mean Arrival Delay'},
                         )
 
-            # Show the plot
-            st.plotly_chart(fig)
-            st.plotly_chart(fig1)
-            st.plotly_chart(fig2)
-            st.plotly_chart(fig3)
-            st.plotly_chart(fig4)
+        # Show the plot
+        # Calculate mean arrival delay for each week
+        mean_weekly_delay = flight.groupby(['Year', 'Week'])[['ARRIVAL_DELAY',"DEPARTURE_DELAY"]].mean().reset_index()
+
+        # Create scatter plot with trendline using Plotly Express
+        fig3 = px.line(mean_weekly_delay,
+                        x='Week',
+                        y='DEPARTURE_DELAY',
+                        title='Weekly Mean Flight Departure Delay with Trend Line',
+                        labels={'Week': 'Week', 'DEPARTURE_DELAY': 'Mean Departure Delay'},
+                        )
+
+        # Show the plot
+        # Calculate mean arrival and departure delay for each week
+        mean_weekly_delay = flight.groupby(['Year', 'Week'])[['ARRIVAL_DELAY', 'DEPARTURE_DELAY']].mean().reset_index()
+
+        # Calculate combined delay (arrival delay + departure delay)
+        mean_weekly_delay['COMBINED_DELAY'] = mean_weekly_delay['ARRIVAL_DELAY'] + mean_weekly_delay['DEPARTURE_DELAY']
+
+        # Create line plot using Plotly Express
+        fig4 = px.line(mean_weekly_delay,
+                    x='Week',
+                    y=['ARRIVAL_DELAY', 'DEPARTURE_DELAY'],
+                    title='Weekly Mean Flight Combined Delay (Departure Delay + Arrival Delay) with Trend Line',
+                    labels={'Week': 'Week', 'COMBINED_DELAY': 'Mean Combined Delay'},
+                    )
+
+        # Show the plot
+        st.plotly_chart(fig)
+        st.plotly_chart(fig1)
+        st.plotly_chart(fig2)
+        st.plotly_chart(fig3)
+        st.plotly_chart(fig4)
     elif sub_analysis_airline == "Daily Flight Delay Analysis":
         st.header("Daily Flight Delay Analysis")
 
