@@ -9,8 +9,8 @@ import vaex
 # Load data as Koalas DataFrames
 airport = pd.read_csv('airports.csv', low_memory=True)
 airlines = pd.read_csv('airlines.csv', low_memory=True)
-flights = vaex.read_csv("flights.csv")
-flight = vaex.read_csv("flight.csv")
+flights = vaex.open("flights.csv")
+flight = vaex.open("flight.csv")
 # Title and description
 # st.title("Flight Delay Prediction")
 # st.write("Description: Files, Numerical & Categorical, Missing Values included. Can be used for EDA & Visualization or Prediction")
